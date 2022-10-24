@@ -13,27 +13,44 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using PlatformService.Data;
+using PlatformService.SyncDataServices.Http;
 
 namespace PlatformService
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public IConfiguration Configuration { get; }
+		private readonly IWebHostEnvironment _env;
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            _env = env;
         }
 
-        public IConfiguration Configuration { get; }
-        public void ConfigureServices(IServiceCollection services)
+
+		public void ConfigureServices(IServiceCollection services)
         {
-			services.AddDbContext<AppDbContext>(opt => 
-				opt.UseInMemoryDatabase("InMem"));
-			services.AddScoped< IPlatformRepo, PlatformRepo>();
+            if (_env.IsProduction())
+            {
+                Console.WriteLine("--> Using SQLServer Db");
+                services.AddDbContext<AppDbContext>(opt =>
+                    opt.UseSqlServer(Configuration.GetConnectionString("PlatformsConn")));
+            }
+            else
+            {
+                Console.WriteLine("--> Using InMem Db");
+                services.AddDbContext<AppDbContext>(opt => 
+                    opt.UseInMemoryDatabase("InMem"));
+            }
+			services.AddScoped<IPlatformRepo, PlatformRepo>();
+			services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
             services.AddControllers();
 			services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());            services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "PlatformService", Version = "v1" });
             });
+
+			Console.WriteLine($"--> Command Service Endpoint: {Configuration["CommandService"]}");
         }
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -55,7 +72,7 @@ namespace PlatformService
                 endpoints.MapControllers();
             });
 
-			PrepDb.PrepPopulation(app);
+			PrepDb.PrepPopulation(app, env.IsProduction());
         }
     }
 }
