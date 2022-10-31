@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using PlatformService.AsyncDataServices;
 using PlatformService.Data;
 using PlatformService.SyncDataServices.Http;
 
@@ -42,7 +43,10 @@ namespace PlatformService
                 services.AddDbContext<AppDbContext>(opt => 
                     opt.UseInMemoryDatabase("InMem"));
             }
+
+            services.AddScoped<IMessageBusClient, MessageBusClient>();
 			services.AddScoped<IPlatformRepo, PlatformRepo>();
+            services.AddSingleton<IMessageBusClient, MessageBusClient>();
 			services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
             services.AddControllers();
 			services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());            services.AddSwaggerGen(c =>
